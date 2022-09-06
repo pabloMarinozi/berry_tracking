@@ -1,0 +1,6 @@
+[submodule "CircleNet"]
+	path = CircleNet
+	url = https://github.com/hrlblab/CircleNet.git
+[submodule "cocoapi"]
+	path = cocoapi
+	url = https://github.com/cocodataset/cocoapi.git
