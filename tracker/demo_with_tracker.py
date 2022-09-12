@@ -26,7 +26,8 @@ import numpy as np
 import argparse, imutils
 import time, dlib, cv2, datetime
 from itertools import zip_longest
-
+from utils.general import check_img_size, non_max_suppression, xyxy2xywh #(LOGGER, check_file, check_img_size, check_imshow, check_requirements, colorstr,
+from utils.torch_utils import select_device
 
 
 
