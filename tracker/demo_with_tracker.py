@@ -26,8 +26,9 @@ import numpy as np
 import argparse, imutils
 import time, dlib, cv2, datetime
 from itertools import zip_longest
-from utils.general import check_img_size, non_max_suppression, xyxy2xywh #(LOGGER, check_file, check_img_size, check_imshow, check_requirements, colorstr,
-from utils.torch_utils import select_device
+import torch
+#from general import check_img_size, non_max_suppression, xyxy2xywh #(LOGGER, check_file, check_img_size, check_imshow, check_requirements, colorstr,
+#from torch_utils import select_device
 
 
 
@@ -36,18 +37,18 @@ video_ext = ['mp4', 'mov', 'avi', 'mkv']
 time_stats = ['tot', 'load', 'pre', 'net', 'dec', 'post', 'merge']
 
 def demo(opt,img):
-	os.environ['CUDA_VISIBLE_DEVICES'] = opt.gpus_str
-	opt.debug = max(opt.debug, 1)
-	Detector = detector_factory[opt.task]
-	detector = Detector(opt)
+    os.environ['CUDA_VISIBLE_DEVICES'] = opt.gpus_str
+    opt.debug = max(opt.debug, 1)
+    Detector = detector_factory[opt.task]
+    detector = Detector(opt)
 
-	ret = detector.run(img)
-	time_str = ''
-	results = ret["results"][1]
-	for stat in time_stats:
-		time_str = time_str + '{} {:.3f}s |'.format(stat, ret[stat])
-	print(time_str)
-	return(results)
+    ret = detector.run(img)
+    time_str = ''
+    results = ret["results"][1]
+    for stat in time_stats:
+        time_str = time_str + '{} {:.3f}s |'.format(stat, ret[stat])
+    print(time_str)
+    return(results)
 
 def run(opt):
     imgsz=opt.imgsz
@@ -59,9 +60,9 @@ def run(opt):
     classes=None
     agnostic_nms=False
     half=False,  # use FP16 half-precision inference
-    device = select_device(is_gpu) #change by '' for CUDA devices
-    stride, names, pt, jit, onnx = model.stride, model.names, model.pt, model.jit, model.onnx
-    imgsz = check_img_size(imgsz, s=stride)  # check image size
+    device = torch.device('cuda:0' if is_gpu else 'cpu')#select_device(is_gpu) #change by '' for CUDA devices
+    #stride, names, pt, jit, onnx = model.stride, model.names, model.pt, model.jit, model.onnx
+    #imgsz = check_img_size(imgsz, s=stride)  # check image size
 
 
     print("[INFO] Starting the video..")
@@ -103,14 +104,15 @@ def run(opt):
         # grab the next frame and handle if we are reading from either
         # VideoCapture or VideoStream
         frame = vs.read()
-        rgb = frame
+        flag, rgb = frame
+        print(rgb.shape)
 
-        if frame is None:
+        if not flag:
             break
 
         # if the frame dimensions are empty, set them
         if W is None or H is None:
-            (H, W) = frame.shape[:2]
+            (H, W) = rgb.shape[:2]
 
         # if we are supposed to be writing a video to disk, initialize
         # the writer
@@ -127,7 +129,7 @@ def run(opt):
 
         # check to see if we should run a more computationally expensive
         # object detection method to aid our tracker
-        if totalFrames % opt.skip-frames == 0:
+        if totalFrames % opt.skip_frames == 0:
             # set the status and initialize our new set of object trackers
             status = "Detecting"
             trackers = []
