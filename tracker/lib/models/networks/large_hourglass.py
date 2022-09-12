@@ -286,7 +286,7 @@ def make_hg_layer(kernel, dim0, dim1, mod, layer=convolution, **kwargs):
 
 class HourglassNet(exkp):
     def __init__(self, heads, num_stacks=2):
-        n       = 5
+        n       = 4
         dims    = [256, 256, 384, 384, 384, 512]
         modules = [2, 2, 2, 2, 2, 4]
 

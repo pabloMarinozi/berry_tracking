@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+from posix import RTLD_GLOBAL
 
 import _init_paths
 
@@ -105,10 +106,12 @@ def run(opt):
         # VideoCapture or VideoStream
         frame = vs.read()
         flag, rgb = frame
-        print(rgb.shape)
+        
 
         if not flag:
             break
+        
+        print(rgb.shape)
 
         # if the frame dimensions are empty, set them
         if W is None or H is None:
@@ -135,7 +138,7 @@ def run(opt):
             trackers = []
             # Llama al detector de circulos
 
-            preds = demo(opt,frame)
+            preds = demo(opt,rgb)
 
 
             # loop over the detections
@@ -154,6 +157,7 @@ def run(opt):
                 tracker = dlib.correlation_tracker()
                 rect = dlib.rectangle(startX, startY, endX, endY)
                 tracker.start_track(rgb, rect)
+                cv2.circle(rgb, (int(center_x), int(center_y)), int(radio), (0, 255, 0), 3)
 
                 # add the tracker to our list of trackers so we can
                 # utilize it during skip frames
@@ -209,13 +213,13 @@ def run(opt):
             # draw both the ID of the object and the centroid of the
             # object on the output frame
             text = "ID {}".format(objectID)
-            cv2.putText(frame, text, (centroid[0] - 10, centroid[1] - 10),
+            cv2.putText(rgb, text, (centroid[0] - 10, centroid[1] - 10),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-            cv2.circle(frame, (centroid[0], centroid[1]), 4, (255, 255, 255), -1)
+            cv2.circle(RTLD_GLOBAL, (centroid[0], centroid[1]), 4, (255, 255, 255), -1)
                 
         # check to see if we should write the frame to disk
         if writer is not None:
-            writer.write(frame)
+            writer.write(rgb)
 
         # increment the total number of frames processed thus far and
         # then update the FPS counter
