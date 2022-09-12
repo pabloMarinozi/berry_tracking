@@ -91,7 +91,6 @@ def run(opt):
     1.  Para correr el script, ingrese a la carpeta 'code/fruit_counter/' dentro del repositorio de winter-variables. Puede ejecutar el archivo runfrutillas.sh, pero previamente debera editar el archivo con los parametros correctos, y ademas darle permisos de ejecucion al archivo con 'chmod +x runfrutillas.sh'. La otra opcion de ejecucion, es ejecutar directamente el archivo  fruit.py , tambien se encuentra en la carpeta 'code/fruit_counter/', y si le pasa el parametro -h tendra una informacion detallada de cada parametro.
     2. Una vez ejecutado el script, el mismo mostrara el video con la deteccion de frutillas.
         ''')
-        parser.add_argument("-w", "--weights", required=True, help="path to Caffe pre-trained model")
         parser.add_argument("-i", "--input", type=str,required=True, help="path to optional input video file")
         parser.add_argument("-o", "--output", type=str, help="path to optional output video file")
         parser.add_argument("-c", "--confidence", type=float, default=0.4,help="minimum probability to filter weak detections")
@@ -116,7 +115,6 @@ def run(opt):
     agnostic_nms=False
     half=False,  # use FP16 half-precision inference
     device = select_device(is_gpu) #change by '' for CUDA devices
-    model = DetectMultiBackend(args["weights"], device=device, dnn=False)
     stride, names, pt, jit, onnx = model.stride, model.names, model.pt, model.jit, model.onnx
     imgsz = check_img_size(imgsz, s=stride)  # check image size
 
@@ -190,6 +188,7 @@ def run(opt):
             trackers = []
             # Llama al detector de circulos
             preds = demo(opt)
+
 
             # loop over the detections
             for pred in reversed(preds):
