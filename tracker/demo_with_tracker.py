@@ -34,83 +34,27 @@ image_ext = ['jpg', 'jpeg', 'png', 'webp']
 video_ext = ['mp4', 'mov', 'avi', 'mkv']
 time_stats = ['tot', 'load', 'pre', 'net', 'dec', 'post', 'merge']
 
-def demo(opt):
-  os.environ['CUDA_VISIBLE_DEVICES'] = opt.gpus_str
-  opt.debug = max(opt.debug, 1)
-  Detector = detector_factory[opt.task]
-  detector = Detector(opt)
+def demo(opt,img):
+	os.environ['CUDA_VISIBLE_DEVICES'] = opt.gpus_str
+	opt.debug = max(opt.debug, 1)
+	Detector = detector_factory[opt.task]
+	detector = Detector(opt)
 
-  if opt.demo == 'webcam' or \
-    opt.demo[opt.demo.rfind('.') + 1:].lower() in video_ext:
-    cam = cv2.VideoCapture(0 if opt.demo == 'webcam' else opt.demo)
-    detector.pause = False
-    while True:
-        _, img = cam.read()
-        cv2.imshow('input', img)
-        ret = detector.run(img)
-        time_str = ''
-        for stat in time_stats:
-          time_str = time_str + '{} {:.3f}s |'.format(stat, ret[stat])
-        print(time_str)
-        if cv2.waitKey(1) == 27:
-            return  # esc to quit
-  else:
-    if os.path.isdir(opt.demo):
-      image_names = []
-      ls = os.listdir(opt.demo)
-      for file_name in sorted(ls):
-          ext = file_name[file_name.rfind('.') + 1:].lower()
-          if ext in image_ext:
-              image_names.append(os.path.join(opt.demo, file_name))
-    else:
-      image_names = [opt.demo]
-
-    print(image_names)
-    
-    for image_name in image_names:
-      ret = detector.run(image_name)
-      time_str = ''
-      results = ret["results"][1]
-      for stat in time_stats:
-        time_str = time_str + '{} {:.3f}s |'.format(stat, ret[stat])
-      print(time_str)
-      return(results)
+	ret = detector.run(img)
+	time_str = ''
+	results = ret["results"][1]
+	for stat in time_stats:
+		time_str = time_str + '{} {:.3f}s |'.format(stat, ret[stat])
+	print(time_str)
+	return(results)
 
 def run(opt):
-
-    def parse_opt():
-        parser = argparse.ArgumentParser(
-                                        formatter_class=argparse.RawDescriptionHelpFormatter,
-                                        description='''fruit.py: Validación del gps de un conjunto de imagenes con el gps de plantas.
-    *El script recibe un modelo preentrenado, un video al cual se le ejecutara la inferencia y recibe el path donde se guardara el video de la inferencia (es opcional). El script ejecuta la inferencia sobre el video, muestra el video por pantalla y luego (si se paso el path) se guarda el video en el path proveido.
-
-    *Para ello, recibe 10 argumentos (3 obligatorios y los demas optionales), el modelo preentrenado, el path del video a inferir, el path (con el nombre) del video de la inferencia (Optional),la probabilidad mínima para filtrar las detecciones débiles(Optional,default=0.4),
-    fotogramas omitidos entre las detecciones(Optional,default=5),tamaño de la imagen de la inferencia(Optional,default=1024),parametros de yolo(Optional, default= 0.25, default=0.45),número máximo de detecciones por cuadro(Optional,defual=1000) y si quieres que use la CPU o GPU. Nota: el script recibe un unico modelo y un unico video.
-
-    Para ejecutarlo seguir los siguientes pasos:
-    1.  Para correr el script, ingrese a la carpeta 'code/fruit_counter/' dentro del repositorio de winter-variables. Puede ejecutar el archivo runfrutillas.sh, pero previamente debera editar el archivo con los parametros correctos, y ademas darle permisos de ejecucion al archivo con 'chmod +x runfrutillas.sh'. La otra opcion de ejecucion, es ejecutar directamente el archivo  fruit.py , tambien se encuentra en la carpeta 'code/fruit_counter/', y si le pasa el parametro -h tendra una informacion detallada de cada parametro.
-    2. Una vez ejecutado el script, el mismo mostrara el video con la deteccion de frutillas.
-        ''')
-        parser.add_argument("-i", "--input", type=str,required=True, help="path to optional input video file")
-        parser.add_argument("-o", "--output", type=str, help="path to optional output video file")
-        parser.add_argument("-c", "--confidence", type=float, default=0.4,help="minimum probability to filter weak detections")
-        parser.add_argument("-s", "--skip-frames", type=int, default=5, help="# of skip frames between detections")
-        parser.add_argument("-y","--imgsz",type=int,default=1024, help="size of image of inference")
-        parser.add_argument("-k","--conf-thres",type=float,default=0.25, help="")
-        parser.add_argument("-l","--iou-thres",type=float, default=0.45, help="")
-        parser.add_argument("-p","--max-det",type=int,default=1000, help="maximum number of detections per frame")
-        parser.add_argument("-u","--is-gpu",type=str,required=True, help="if you want it to use CPU pass it 'cpu', otherwise pass it an empty string '' for GPU use.")
-        args = parser.parse_args()
-        return args
-
-    args = vars(parse_opt())
-    print(args)
-    imgsz=args["imgsz"]
-    conf_thres=args["conf_thres"]
-    iou_thres=args["iou_thres"]
-    max_det=args["max_det"]
-    is_gpu=args["is_gpu"]
-    confidence =args["confidence"]
+    imgsz=opt.imgsz
+    conf_thres=opt.conf_thres
+    iou_thres=opt.iou_thres
+    max_det=opt.max_det
+    is_gpu=opt.is_gpu
+    confidence =opt.confidence
     classes=None
     agnostic_nms=False
     half=False,  # use FP16 half-precision inference
@@ -120,7 +64,7 @@ def run(opt):
 
 
     print("[INFO] Starting the video..")
-    vs = cv2.VideoCapture(args["input"])
+    vs = cv2.VideoCapture(opt.input)
 
     # initialize the video writer (we'll instantiate later if need be)
     writer = None
@@ -169,9 +113,9 @@ def run(opt):
 
         # if we are supposed to be writing a video to disk, initialize
         # the writer
-        if args["output"] is not None and writer is None:
+        if opt.output is not None and writer is None:
             fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-            writer = cv2.VideoWriter(args["output"], fourcc, 30,
+            writer = cv2.VideoWriter(opt.output, fourcc, 30,
                 (W, H), True)
 
         # initialize the current status along with our list of bounding
@@ -182,12 +126,13 @@ def run(opt):
 
         # check to see if we should run a more computationally expensive
         # object detection method to aid our tracker
-        if totalFrames % args["skip_frames"] == 0:
+        if totalFrames % opt.skip-frames == 0:
             # set the status and initialize our new set of object trackers
             status = "Detecting"
             trackers = []
             # Llama al detector de circulos
-            preds = demo(opt)
+
+            preds = demo(opt,frame)
 
 
             # loop over the detections
@@ -199,7 +144,7 @@ def run(opt):
               classl = pred[4]
               startX, startY = center_x-radio,center_y-radio
               endX, endY = center_x+radio,center_y+radio
-              if conf > args["confidence"]:
+              if conf > confidence:
                 # construct a dlib rectangle object from the bounding
                 # box coordinates and then start the dlib correlation
                 # tracker
