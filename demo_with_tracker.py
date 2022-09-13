@@ -67,6 +67,7 @@ def run(opt):
 
 
     print("[INFO] Starting the video..")
+    base_name = opt_input.replace("/content/","").replace(".mp4","")
     vs = cv2.VideoCapture(opt.input)
 
     # initialize the video writer (we'll instantiate later if need be)
@@ -157,23 +158,26 @@ def run(opt):
                 tracker = dlib.correlation_tracker()
                 rect = dlib.rectangle(startX, startY, endX, endY)
                 tracker.start_track(rgb, rect)
-                cv2.circle(rgb, (int(center_x), int(center_y)), int(radio), (0, 255, 0), 3)
+                
+                tracker_radio = (tracker,radio)
 
                 # add the tracker to our list of trackers so we can
                 # utilize it during skip frames
-                trackers.append(tracker)
+                trackers.append(tracker_radio)
+                rects.append((startX, startY, endX, endY, radio))
                       
 
         # otherwise, we should utilize our object *trackers* rather than
         # object *detectors* to obtain a higher frame processing throughput
         else:
             # loop over the trackers
-            for tracker in trackers:
+            for tracker_radio in trackers:
                 # set the status of our system to be 'tracking' rather
                 # than 'waiting' or 'detecting'
                 status = "Tracking"
 
                 # update the tracker and grab the updated position
+                tracker, radio = tracker_radio
                 tracker.update(rgb)
                 pos = tracker.get_position()
 
@@ -184,27 +188,29 @@ def run(opt):
                 endY = int(pos.bottom())
 
                 # add the bounding box coordinates to the rectangles list
-                rects.append((startX, startY, endX, endY))
+                rects.append((startX, startY, endX, endY, radio))
 
         # use the centroid tracker to associate the (1) old object
         # centroids with (2) the newly computed object centroids
-        objects = ct.update(rects)
+        objects, radios = ct.update(rects)
 
         # loop over the tracked objects
         for (objectID, centroid) in objects.items():
+            radio = radios[objectID]
             # check to see if a trackable object exists for the current
             # object ID
             to = trackableObjects.get(objectID, None)
 
             # if there is no existing trackable object, create one
             if to is None:
-                to = TrackableObject(objectID, centroid)
+                to = TrackableObject(objectID, centroid, radio)
 
             # otherwise, there is a trackable object so we have to add the centroid
             else:
                 y = [c[1] for c in to.centroids]
                 direction = centroid[1] - np.mean(y)
                 to.centroids.append(centroid)
+                to.radios.append(radio)
 
 
             # store the trackable object in our dictionary
@@ -213,9 +219,14 @@ def run(opt):
             # draw both the ID of the object and the centroid of the
             # object on the output frame
             text = "ID {}".format(objectID)
-            cv2.putText(rgb, text, (centroid[0] - 10, centroid[1] - 10),
+            cv2.putText(rgb, text, (centroid[0], centroid[1]),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
             cv2.circle(RTLD_GLOBAL, (centroid[0], centroid[1]), 4, (255, 255, 255), -1)
+            cv2.circle(rgb, (centroid[0], centroid[1]), int(radio), (0, 255, 0), 3)
+            if status == "Detecting":
+                name = "output/" + base_name + "_" + str(totalFrames) + ".png"
+                cv2.imwrite(name,rgb)
+
                 
         # check to see if we should write the frame to disk
         if writer is not None:
