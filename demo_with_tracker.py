@@ -16,18 +16,19 @@ from opts import opts
 from detectors.detector_factory import detector_factory
 
 ##imports de tracker
-from mylib.centroidtracker import CentroidTracker
-from mylib.trackableobject import TrackableObject
+from tracker.centroidtracker import CentroidTracker
+from tracker.trackableobject import TrackableObject
 from imutils.video import VideoStream
 from imutils.video import FPS
-from mylib.mailer import Mailer
-from mylib import config, thread
+from tracker.mailer import Mailer
+from tracker import config, thread
 import time, schedule, csv
 import numpy as np
 import argparse, imutils
 import time, dlib, cv2, datetime
 from itertools import zip_longest
 import torch
+import pandas as pd
 #from general import check_img_size, non_max_suppression, xyxy2xywh #(LOGGER, check_file, check_img_size, check_imshow, check_requirements, colorstr,
 #from torch_utils import select_device
 
@@ -36,12 +37,14 @@ import torch
 image_ext = ['jpg', 'jpeg', 'png', 'webp']
 video_ext = ['mp4', 'mov', 'avi', 'mkv']
 time_stats = ['tot', 'load', 'pre', 'net', 'dec', 'post', 'merge']
+detector = None
 
-def demo(opt,img):
+def detect(opt,img):
     os.environ['CUDA_VISIBLE_DEVICES'] = opt.gpus_str
     opt.debug = max(opt.debug, 1)
-    Detector = detector_factory[opt.task]
-    detector = Detector(opt)
+    if detector is None:
+        Detector = detector_factory[opt.task]
+        detector = Detector(opt)
 
     ret = detector.run(img)
     time_str = ''
@@ -51,7 +54,7 @@ def demo(opt,img):
     print(time_str)
     return(results)
 
-def run(opt):
+def track(opt):
     imgsz=opt.imgsz
     conf_thres=opt.conf_thres
     iou_thres=opt.iou_thres
@@ -67,7 +70,7 @@ def run(opt):
 
 
     print("[INFO] Starting the video..")
-    base_name = opt_input.replace("/content/","").replace(".mp4","")
+    base_name = opt.input.replace("/content/","").replace(".mp4","")
     vs = cv2.VideoCapture(opt.input)
 
     # initialize the video writer (we'll instantiate later if need be)
@@ -81,7 +84,7 @@ def run(opt):
     # instantiate our centroid tracker, then initialize a list to store
     # each of our dlib correlation trackers, followed by a dictionary to
     # map each unique object ID to a TrackableObject
-    ct = CentroidTracker(maxDisappeared=20, maxDistance=50)
+    ct = CentroidTracker(maxDisappeared=2, maxDistance=50)
     trackers = []
     trackableObjects = {}
 
@@ -94,6 +97,8 @@ def run(opt):
     x = []
     empty=[]
     empty1=[]
+    list_of_point_dicts = []
+
 
     # start the frames per second throughput estimator
     fps = FPS().start()
@@ -139,7 +144,7 @@ def run(opt):
             trackers = []
             # Llama al detector de circulos
 
-            preds = demo(opt,rgb)
+            preds = detect(opt,rgb)
 
 
             # loop over the detections
@@ -195,22 +200,20 @@ def run(opt):
         objects, radios = ct.update(rects)
 
         # loop over the tracked objects
+        name = base_name + "_" + str(totalFrames) + ".png"
         for (objectID, centroid) in objects.items():
             radio = radios[objectID]
+            if status == "Detecting": detecting = True
             # check to see if a trackable object exists for the current
             # object ID
             to = trackableObjects.get(objectID, None)
 
             # if there is no existing trackable object, create one
             if to is None:
-                to = TrackableObject(objectID, centroid, radio)
-
-            # otherwise, there is a trackable object so we have to add the centroid
+                to = TrackableObject(objectID, centroid, radio, name, detecting)        
+            # otherwise, there is a trackable object so we have to add the observation
             else:
-                y = [c[1] for c in to.centroids]
-                direction = centroid[1] - np.mean(y)
-                to.centroids.append(centroid)
-                to.radios.append(radio)
+                to.add_observation(centroid, radio, name, detecting)
 
 
             # store the trackable object in our dictionary
@@ -223,14 +226,17 @@ def run(opt):
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
             cv2.circle(RTLD_GLOBAL, (centroid[0], centroid[1]), 4, (255, 255, 255), -1)
             cv2.circle(rgb, (centroid[0], centroid[1]), int(radio), (0, 255, 0), 3)
-            if status == "Detecting":
-                name = "output/" + base_name + "_" + str(totalFrames) + ".png"
-                cv2.imwrite(name,rgb)
+            
 
                 
         # check to see if we should write the frame to disk
         if writer is not None:
             writer.write(rgb)
+        
+        if status == "Detecting":
+            output_name = "output/" + name
+            print(output_name)
+            cv2.imwrite(output_name,rgb)
 
         # increment the total number of frames processed thus far and
         # then update the FPS counter
@@ -241,9 +247,26 @@ def run(opt):
     fps.stop()
     print("[INFO] elapsed time: {:.2f}".format(fps.elapsed()))
     print("[INFO] approx. FPS: {:.2f}".format(fps.fps()))
+    return trackableObjects
 
+def post_processing(dict_to):
+    output_list = []
+    for id in dict_to:
+        to = dict_to[id]
+        observation_list = to.observations
+        obs_dfs = []
+        for obs_dict in observation_list:
+            obs_dfs.append(pd.from_dict(obs_dict))
+        to_df = pd.concat(obs_dfs)
+        to_df["track_id"] = id
+        to_df["label"] = "baya"
+        output_list.append(to_df)
+    output_df = pd.concat(output_list)
+    return output_df
 
 if __name__ == '__main__':
   #load options from argparse
   opt = opts().init()
-  run(opt)
+  track_obj_dict = track(opt)
+  output_df = post_processing(track_obj_dict)
+  output_df.to_csv("output.csv")
