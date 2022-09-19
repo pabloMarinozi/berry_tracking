@@ -37,14 +37,11 @@ import pandas as pd
 image_ext = ['jpg', 'jpeg', 'png', 'webp']
 video_ext = ['mp4', 'mov', 'avi', 'mkv']
 time_stats = ['tot', 'load', 'pre', 'net', 'dec', 'post', 'merge']
-detector = None
 
-def detect(opt,img):
+
+def detect(opt,img,detector):
     os.environ['CUDA_VISIBLE_DEVICES'] = opt.gpus_str
-    opt.debug = max(opt.debug, 1)
-    if detector is None:
-        Detector = detector_factory[opt.task]
-        detector = Detector(opt)
+    opt.debug = max(opt.debug, 1)      
 
     ret = detector.run(img)
     time_str = ''
@@ -106,6 +103,9 @@ def track(opt):
     if config.Thread:
         vs = thread.ThreadingClass(config.url)
 
+    Detector = detector_factory[opt.task]
+    detector = Detector(opt)
+
     # loop over frames from the video stream
     while True:
         # grab the next frame and handle if we are reading from either
@@ -117,7 +117,7 @@ def track(opt):
         if not flag:
             break
         
-        print(rgb.shape)
+        #print(rgb.shape)
 
         # if the frame dimensions are empty, set them
         if W is None or H is None:
@@ -144,7 +144,7 @@ def track(opt):
             trackers = []
             # Llama al detector de circulos
 
-            preds = detect(opt,rgb)
+            preds = detect(opt,rgb,detector)
 
 
             # loop over the detections
@@ -176,10 +176,8 @@ def track(opt):
         # object *detectors* to obtain a higher frame processing throughput
         else:
             # loop over the trackers
+            status = "Tracking"
             for tracker_radio in trackers:
-                # set the status of our system to be 'tracking' rather
-                # than 'waiting' or 'detecting'
-                status = "Tracking"
 
                 # update the tracker and grab the updated position
                 tracker, radio = tracker_radio
@@ -210,10 +208,10 @@ def track(opt):
 
             # if there is no existing trackable object, create one
             if to is None:
-                to = TrackableObject(objectID, centroid, radio, name, detecting)        
+                to = TrackableObject(objectID, centroid, radio, name, status)        
             # otherwise, there is a trackable object so we have to add the observation
             else:
-                to.add_observation(centroid, radio, name, detecting)
+                to.add_observation(centroid, radio, name, status)
 
 
             # store the trackable object in our dictionary
@@ -256,7 +254,7 @@ def post_processing(dict_to):
         observation_list = to.observations
         obs_dfs = []
         for obs_dict in observation_list:
-            obs_dfs.append(pd.from_dict(obs_dict))
+            obs_dfs.append(pd.DataFrame.from_dict(obs_dict))
         to_df = pd.concat(obs_dfs)
         to_df["track_id"] = id
         to_df["label"] = "baya"
@@ -269,4 +267,5 @@ if __name__ == '__main__':
   opt = opts().init()
   track_obj_dict = track(opt)
   output_df = post_processing(track_obj_dict)
-  output_df.to_csv("output.csv")
+  csv_name = opt.input.replace("/content/","").replace(".mp4",".csv")
+  output_df.to_csv(csv_name)

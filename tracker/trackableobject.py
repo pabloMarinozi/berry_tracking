@@ -5,9 +5,11 @@ class TrackableObject:
 		self.objectID = objectID
 		self.centroids = [centroid]
 		self.radios = [radio]
-		self.observations = [{dict}]
+		self.observations = [{'image_name': frame_name,
+		 'x': centroid[0], 'y': centroid[1],
+		  'r': radio, 'detection': detected}]
 
-	def add_observation(centroid, radio, frame_name, detected):
+	def add_observation(self, centroid, radio, frame_name, detected):
 		self.centroids.append(centroid)
 		self.radios.append(radio)
 		self.observations.append({'image_name': frame_name,
