@@ -10,9 +10,7 @@ mkl-fft
 mkl-random
 mkl-service
 numba==0.53.1
-numpy
 olefile==0.46
-opencv-python==4.5.2.54
 openslide-python==1.1.2
 Pillow
 progress==1.5
@@ -24,3 +22,8 @@ python-dateutil==2.8.1
 scipy==1.5.4
 six
 xmltodict==0.12.0
+schedule==0.6.0
+numpy==1.19.2
+argparse==1.4.0
+imutils==0.5.3
+opencv-python==4.2.0.32

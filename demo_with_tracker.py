@@ -51,13 +51,13 @@ def detect(opt,img,detector):
     print(time_str)
     return(results)
 
-def track(opt):
+def track(opt,conf):
     imgsz=opt.imgsz
     conf_thres=opt.conf_thres
     iou_thres=opt.iou_thres
     max_det=opt.max_det
     is_gpu=opt.is_gpu
-    confidence =opt.confidence
+    confidence = conf
     classes=None
     agnostic_nms=False
     half=False,  # use FP16 half-precision inference
@@ -232,7 +232,7 @@ def track(opt):
             writer.write(rgb)
         
         if status == "Detecting":
-            output_name = "output/" + name
+            output_name = opt.output + str(conf) + "/" + name
             print(output_name)
             cv2.imwrite(output_name,rgb)
 
@@ -264,8 +264,11 @@ def post_processing(dict_to):
 
 if __name__ == '__main__':
   #load options from argparse
+  confidences = [0.3,0.4,0.5,0.6]
   opt = opts().init()
-  track_obj_dict = track(opt)
-  output_df = post_processing(track_obj_dict)
-  csv_name = opt.input.replace("/content/","").replace(".mp4",".csv")
-  output_df.to_csv(csv_name)
+  for conf in confidences:
+    os.makedirs(opt.output + str(conf), exist_ok=True)
+    track_obj_dict = track(opt,conf)
+    output_df = post_processing(track_obj_dict)
+    csv_name = opt.input.replace("/content/","").replace(".mp4",str(conf)+".csv")
+    output_df.to_csv(csv_name)
