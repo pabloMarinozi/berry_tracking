@@ -14,6 +14,7 @@ import numpy as np
 
 from opts import opts
 from detectors.detector_factory import detector_factory
+from pandas.core.series import create_series_with_explicit_dtype
 
 ##imports de tracker
 from tracker.centroidtracker import CentroidTracker
@@ -67,7 +68,7 @@ def track(opt,conf):
 
 
     print("[INFO] Starting the video..")
-    base_name = opt.input.replace("/content/","").replace(".mp4","")
+    base_name = opt.input.replace("/content/videos/","").replace(".mp4","")
     vs = cv2.VideoCapture(opt.input)
 
     # initialize the video writer (we'll instantiate later if need be)
@@ -232,8 +233,8 @@ def track(opt,conf):
             writer.write(rgb)
         
         if status == "Detecting":
-            output_name = opt.output + str(conf) + "/" + name
-            print(output_name)
+            output_name = opt.output + "/" + str(confidence) + "/" + name
+            #print(output_name)
             cv2.imwrite(output_name,rgb)
 
         # increment the total number of frames processed thus far and
@@ -266,9 +267,12 @@ if __name__ == '__main__':
   #load options from argparse
   confidences = [0.3,0.4,0.5,0.6]
   opt = opts().init()
+  
   for conf in confidences:
-    os.makedirs(opt.output + str(conf), exist_ok=True)
+    print("conf: ",opt.input)
+    os.makedirs(opt.output +"/"+ str(conf), exist_ok=True)
     track_obj_dict = track(opt,conf)
     output_df = post_processing(track_obj_dict)
-    csv_name = opt.input.replace("/content/","").replace(".mp4",str(conf)+".csv")
+    csv_name = opt.output +"/"+str(conf)+".csv"
+    print(csv_name)
     output_df.to_csv(csv_name)
