@@ -67,7 +67,7 @@ def track(opt):
 
 
     print("[INFO] Starting the video..")
-    base_name = opt.input.replace("/content/","").replace(".mp4","")
+    base_name = opt.input.replace("/content/videos","").replace(".mp4","")
     vs = cv2.VideoCapture(opt.input)
 
     # initialize the video writer (we'll instantiate later if need be)
@@ -107,7 +107,7 @@ def track(opt):
     detector = Detector(opt)
 
     # loop over frames from the video stream
-    while True:
+    while totalFrames<100:
         # grab the next frame and handle if we are reading from either
         # VideoCapture or VideoStream
         frame = vs.read()
@@ -198,7 +198,11 @@ def track(opt):
         objects, radios = ct.update(rects)
 
         # loop over the tracked objects
-        name = base_name + "_" + str(totalFrames) + ".png"
+        img_name = base_name + "_" + str(totalFrames) + ".png"
+        if status == "Detecting":
+            output_name = opt.output + img_name
+            print(output_name)
+            cv2.imwrite(output_name,rgb)
         for (objectID, centroid) in objects.items():
             radio = radios[objectID]
             if status == "Detecting": detecting = True
@@ -208,10 +212,10 @@ def track(opt):
 
             # if there is no existing trackable object, create one
             if to is None:
-                to = TrackableObject(objectID, centroid, radio, name, status)        
+                to = TrackableObject(objectID, centroid, radio, img_name, status)        
             # otherwise, there is a trackable object so we have to add the observation
             else:
-                to.add_observation(centroid, radio, name, status)
+                to.add_observation(centroid, radio, img_name, status)
 
 
             # store the trackable object in our dictionary
@@ -232,7 +236,8 @@ def track(opt):
             writer.write(rgb)
         
         if status == "Detecting":
-            output_name = "output/" + name
+            img_name_det = base_name + "_" + str(totalFrames) + "_det.png"
+            output_name = opt.output + img_name_det
             print(output_name)
             cv2.imwrite(output_name,rgb)
 
@@ -267,5 +272,6 @@ if __name__ == '__main__':
   opt = opts().init()
   track_obj_dict = track(opt)
   output_df = post_processing(track_obj_dict)
-  csv_name = opt.input.replace("/content/","").replace(".mp4",".csv")
+  csv_name = opt.output + "/detections.csv"
+  print(csv_name)
   output_df.to_csv(csv_name)
