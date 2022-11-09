@@ -14,7 +14,6 @@ import numpy as np
 
 from opts import opts
 from detectors.detector_factory import detector_factory
-from pandas.core.series import create_series_with_explicit_dtype
 
 ##imports de tracker
 from tracker.centroidtracker import CentroidTracker
@@ -52,13 +51,13 @@ def detect(opt,img,detector):
     print(time_str)
     return(results)
 
-def track(opt,conf):
+def track(opt):
     imgsz=opt.imgsz
     conf_thres=opt.conf_thres
     iou_thres=opt.iou_thres
     max_det=opt.max_det
     is_gpu=opt.is_gpu
-    confidence = conf
+    confidence =opt.confidence
     classes=None
     agnostic_nms=False
     half=False,  # use FP16 half-precision inference
@@ -68,7 +67,7 @@ def track(opt,conf):
 
 
     print("[INFO] Starting the video..")
-    base_name = opt.input.replace("/content/videos/","").replace(".mp4","")
+    base_name = opt.input.replace("/content/","").replace(".mp4","")
     vs = cv2.VideoCapture(opt.input)
 
     # initialize the video writer (we'll instantiate later if need be)
@@ -233,8 +232,8 @@ def track(opt,conf):
             writer.write(rgb)
         
         if status == "Detecting":
-            output_name = opt.output + "/" + str(confidence) + "/" + name
-            #print(output_name)
+            output_name = "output/" + name
+            print(output_name)
             cv2.imwrite(output_name,rgb)
 
         # increment the total number of frames processed thus far and
@@ -265,14 +264,8 @@ def post_processing(dict_to):
 
 if __name__ == '__main__':
   #load options from argparse
-  confidences = [0.3,0.4,0.5,0.6]
   opt = opts().init()
-  
-  for conf in confidences:
-    print("conf: ",opt.input)
-    os.makedirs(opt.output +"/"+ str(conf), exist_ok=True)
-    track_obj_dict = track(opt,conf)
-    output_df = post_processing(track_obj_dict)
-    csv_name = opt.output +"/"+str(conf)+".csv"
-    print(csv_name)
-    output_df.to_csv(csv_name)
+  track_obj_dict = track(opt)
+  output_df = post_processing(track_obj_dict)
+  csv_name = opt.input.replace("/content/","").replace(".mp4",".csv")
+  output_df.to_csv(csv_name)
