@@ -195,7 +195,12 @@ def track(opt):
 
         # use the centroid tracker to associate the (1) old object
         # centroids with (2) the newly computed object centroids
-        objects, radios = ct.update(rects)
+        try:
+            objects, radios = ct.update(rects)  
+        except ValueError:
+            totalFrames += 1
+            fps.update()
+            continue
 
         # loop over the tracked objects
         img_name = base_name + "_" + str(totalFrames) + ".png"
