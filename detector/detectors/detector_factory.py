@@ -6,12 +6,16 @@ from .exdet import ExdetDetector
 from .ddd import DddDetector
 from .ctdet import CtdetDetector
 from .multi_pose import MultiPoseDetector
-from .circledet import CircledetDetector
+from .circledet import GrapesCircledetDetector
+from .polygondet import PolygondetDetector
+from .circledet_iou import CircledetIOUDetector
 
 detector_factory = {
   'exdet': ExdetDetector, 
   'ddd': DddDetector,
   'ctdet': CtdetDetector,
   'multi_pose': MultiPoseDetector,
-  'circledet': CircledetDetector,
+  'circledet': GrapesCircledetDetector,
+  'polygondet': PolygondetDetector,
+  'cdiou': CircledetIOUDetector
 }

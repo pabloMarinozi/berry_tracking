@@ -10,20 +10,13 @@ class opts(object):
   def __init__(self):
     self.parser = argparse.ArgumentParser()
     # basic experiment setting
-    self.parser.add_argument("-w", "--weights", help="path to Caffe pre-trained model")
-    self.parser.add_argument("-i", "--input", type=str,required=True, help="path to optional input video file")
-    self.parser.add_argument("-o", "--output", type=str, help="path to optional output video file")
-    self.parser.add_argument("-c", "--confidence", type=float, default=0.4,help="minimum probability to filter weak detections")
-    self.parser.add_argument("-s", "--skip-frames", type=int, default=5, help="# of skip frames between detections")
-    self.parser.add_argument("-y","--imgsz",type=int,default=1024, help="size of image of inference")
-    self.parser.add_argument("-k","--conf-thres",type=float,default=0.25, help="")
-    self.parser.add_argument("-l","--iou-thres",type=float, default=0.45, help="")
-    self.parser.add_argument("-p","--max-det",type=int,default=1000, help="maximum number of detections per frame")
-    self.parser.add_argument("-u","--is-gpu",type=str,required=True, help="if you want it to use CPU pass it 'cpu', otherwise pass it an empty string '' for GPU use.")
     self.parser.add_argument('task', default='circledet',
-                             help='ctdet | ddd | multi_pose | exdet | circledet')
+                             help='ctdet | ddd | multi_pose | exdet | circledet | polygondet')
+    self.parser.add_argument('--confidence_threshold', type=float, default=0.4,
+                             help='minimum confidence for a detection to be considered')
+
     self.parser.add_argument('--dataset', default='monuseg',
-                             help='coco | kitti | coco_hp | pascal | kidpath | monuseg')
+                             help='coco | kitti | coco_hp | pascal | kidpath | monuseg | polygons')
     self.parser.add_argument('--exp_id', default='default')
     self.parser.add_argument('--test', action='store_true')
     self.parser.add_argument('--ontestdata', action='store_true')
@@ -38,6 +31,8 @@ class opts(object):
     self.parser.add_argument('--demo', default='', 
                              help='path to image/ image folders/ video. '
                                   'or "webcam"')
+    self.parser.add_argument('--inference_folder', default='/mnt/datos/inferencia/',
+                             help='output path for inference')
     self.parser.add_argument('--demo_dir', default='',
                              help='output path to image/ image folders/ video. ')
     self.parser.add_argument('--load_model', default='',
@@ -72,13 +67,13 @@ class opts(object):
                              help='save model to disk every 5 epochs.')
     self.parser.add_argument('--metric', default='loss', 
                              help='main metric to save best model')
-    self.parser.add_argument('--vis_thresh', type=float, default=0.2,
+    self.parser.add_argument('--vis_thresh', type=float, default=0,
                              help='visualization threshold.')
     self.parser.add_argument('--debugger_theme', default='white',
                              choices=['white', 'black'])
     
     # model
-    self.parser.add_argument('--arch', default='dla_34', 
+    self.parser.add_argument('--arch', default='hourglass',
                              help='model architecture. Currently tested'
                                   'res_18 | res_101 | resdcn_18 | resdcn_101 |'
                                   'dlav0_34 | dla_34 | hourglass')
@@ -89,6 +84,8 @@ class opts(object):
                                   '64 for resnets and 256 for dla.')
     self.parser.add_argument('--down_ratio', type=int, default=4,
                              help='output stride. Currently only supports 4.')
+    self.parser.add_argument('--vertices_number', type=int, default=4,
+                             help='Currently only supports 4.')
 
     # input
     self.parser.add_argument('--input_res', type=int, default=-1, 
@@ -185,6 +182,8 @@ class opts(object):
                              help='loss weight for keypoint local offsets.')
     self.parser.add_argument('--wh_weight', type=float, default=0.1,
                              help='loss weight for bounding box size.')
+    self.parser.add_argument('--occ_weight', type=float, default=1,
+                             help='loss weight for occlusion_factor')
     # multi_pose
     self.parser.add_argument('--hp_weight', type=float, default=1,
                              help='loss weight for human pose offset.')
@@ -294,6 +293,7 @@ class opts(object):
 
     opt.root_dir = os.path.join(os.path.dirname(__file__), '..', '..')
     opt.data_dir = os.path.join(opt.root_dir, 'data')
+    # opt.data_dir = '/mnt/datos/datasets'
     opt.exp_dir = os.path.join(opt.root_dir, 'exp', opt.task)
     opt.save_dir = os.path.join(opt.exp_dir, opt.exp_id)
     opt.debug_dir = os.path.join(opt.save_dir, 'debug')
@@ -346,8 +346,23 @@ class opts(object):
       # assert opt.dataset in ['pascal', 'coco']
       opt.heads = {'hm': opt.num_classes,
                    'cl': 1 if not opt.cat_spec_wh else 1 * opt.num_classes}
+
       if opt.reg_offset:
         opt.heads.update({'reg': 2})
+      #cdiou
+    elif opt.task == 'cdiou':
+      # assert opt.dataset in ['pascal', 'coco']
+      opt.heads = {'hm': opt.num_classes,
+                   'cl': 1 if not opt.cat_spec_wh else 1 * opt.num_classes,
+                   'reg': 2,
+                   'occ': 1}
+
+    elif opt.task == 'polygondet':
+      opt.heads = {'hm': opt.num_classes,
+                   'cl': opt.vertices_number * 2 }#* opt.num_classes
+      if opt.reg_offset:
+        opt.heads.update({'reg': 2})
+
     elif opt.task == 'multi_pose':
       # assert opt.dataset in ['coco_hp']
       opt.flip_idx = dataset.flip_idx
@@ -365,12 +380,21 @@ class opts(object):
 
   def init(self, args=''):
     default_dataset_info = {
-      'ctdet': {'default_resolution': [512, 512], 'num_classes': 80, 
+      'ctdet': {'default_resolution': [512, 512], 'num_classes': 80,
                 'mean': [0.408, 0.447, 0.470], 'std': [0.289, 0.274, 0.278],
                 'dataset': 'coco'},
-      'circledet': {'default_resolution': [512, 512], 'num_classes': 1,
+      'circledet': {'default_resolution': [1024, 576], 'num_classes': 1,
                   'mean': [0.408, 0.447, 0.470], 'std': [0.289, 0.274, 0.278],
-                  'dataset': 'monuseg'},
+                  'dataset': 'grapes'},
+      'cdiou': {'default_resolution': [1024, 576], 'num_classes': 1,
+                   'mean': [0.408, 0.447, 0.470], 'std': [0.289, 0.274, 0.278],
+                   'dataset': 'grapes_with_occ_reg'},
+      'polygondet': {'default_resolution': [1024, 576], 'num_classes': 1,
+                  'mean': [0.408, 0.447, 0.470], 'std': [0.289, 0.274, 0.278],
+                  'dataset': 'polygons'},
+      'polygondet2c': {'default_resolution': [1024, 576], 'num_classes': 2,
+                     'mean': [0.408, 0.447, 0.470], 'std': [0.289, 0.274, 0.278],
+                     'dataset': 'polygons2c'},
       'exdet': {'default_resolution': [512, 512], 'num_classes': 80, 
                 'mean': [0.408, 0.447, 0.470], 'std': [0.289, 0.274, 0.278],
                 'dataset': 'coco'},
@@ -387,7 +411,7 @@ class opts(object):
     class Struct:
       def __init__(self, entries):
         for k, v in entries.items():
-          self.__setattr__(k, v)
+            self.__setattr__(k, v)
     opt = self.parse(args)
     dataset = Struct(default_dataset_info[opt.task])
     opt.dataset = dataset.dataset

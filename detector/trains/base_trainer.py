@@ -67,7 +67,6 @@ class BaseTrainer(object):
       for k in batch:
         if k != 'meta':
           batch[k] = batch[k].to(device=opt.device, non_blocking=True)
-
       #starting point
       output, loss, loss_stats = model_with_loss(batch)
       loss = loss.mean()

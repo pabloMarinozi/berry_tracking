@@ -4,8 +4,9 @@ from __future__ import print_function
 
 import torch
 import torch.nn as nn
+import numpy as np
 from .utils import _gather_feat, _tranpose_and_gather_feat
-
+import copy
 def _nms(heat, kernel=3):
     pad = (kernel - 1) // 2
 
@@ -500,7 +501,7 @@ def circledet_decode(heat, cl, reg=None, cat_spec_wh=False, K=100):
 
     # heat = torch.sigmoid(heat)
     # perform nms on heatmaps
-    heat = _nms(heat)
+    heat = _nms(heat) #TODO
 
     scores, inds, clses, ys, xs = _topk(heat, K=K)
     if reg is not None:
@@ -525,6 +526,47 @@ def circledet_decode(heat, cl, reg=None, cat_spec_wh=False, K=100):
     detections = torch.cat([circles, scores, clses], dim=2)
     return detections
 
+def cdiou_decode(heat, cl, occ, opt,reg=None,cat_spec_wh=False , K=100):
+    batch, cat, height, width = heat.size()
+
+    # heat = torch.sigmoid(heat)
+    # perform nms on heatmaps
+    # heat = _nms(occ) #TODO
+    # Filtramos los K picos más altos de heat
+    scores, inds, clses, ys, xs = _topk(heat, K=K)
+    # Enmascaramos los valores de occ que no pertenezcan a dichos K picos
+    occ_top_K = torch.zeros_like(heat)
+    xs, ys, scores = xs.squeeze(), ys.squeeze(), scores.squeeze()
+    for xx, yy, score in zip(xs, ys, scores):
+        if score.item() > opt.confidence_threshold: # filtramos detecciones con confianza (pico) menor a 0.4
+            occ_top_K[0, 0, int(yy.item()),int(xx.item())] = occ[0, 0, int(yy.item()), int(xx.item())]
+
+    # En caso de superposición de círculos conservamos los menos ocluidos
+    heat = _nms(occ_top_K)
+    occ_scores , inds, clses, ys, xs = _topk(heat, K=K)
+
+    if reg is not None:
+        reg = _tranpose_and_gather_feat(reg, inds)
+        reg = reg.view(batch, K, 2)
+        xs = xs.view(batch, K, 1) + reg[:, :, 0:1]
+        ys = ys.view(batch, K, 1) + reg[:, :, 1:2]
+    else:
+        xs = xs.view(batch, K, 1) + 0.5
+        ys = ys.view(batch, K, 1) + 0.5
+    cl = _tranpose_and_gather_feat(cl, inds)
+    occ = _tranpose_and_gather_feat(occ, inds)
+    cl = cl.view(batch, K, 1)
+    occ = occ.view(batch, K, 1)
+    clses = clses.view(batch, K, 1).float()
+    occ_scores = occ_scores.view(batch, K, 1)
+    # print(scores)
+    circles = torch.cat([xs, ys, cl], dim =2)
+    # bboxes = torch.cat([xs - wh[..., 0:1] / 2,
+    #                     ys - wh[..., 1:2] / 2,
+    #                     xs + wh[..., 0:1] / 2,
+    #                     ys + wh[..., 1:2] / 2], dim=2)
+    detections = torch.cat([circles,occ, occ_scores, clses], dim=2)
+    return detections
 
 def multi_pose_decode(
     heat, wh, kps, reg=None, hm_hp=None, hp_offset=None, K=100):
@@ -601,3 +643,35 @@ def multi_pose_decode(
   detections = torch.cat([bboxes, scores, kps, clses], dim=2)
     
   return detections
+
+def polygondet_decode(heat, polygon_vertices, reg=None, cat_spec_wh=False, K=100):
+    batch, cat, height, width = heat.size()
+
+    # heat = torch.sigmoid(heat)
+    # perform nms on heatmaps
+    heat = _nms(heat)
+
+    scores, inds, clses, ys, xs = _topk(heat, K=K)
+    if reg is not None: #por acá
+        reg = _tranpose_and_gather_feat(reg, inds)
+        #torch.Size([1, 1000, 2])
+        reg = reg.view(batch, K, 2)
+        # torch.Size([1, 1000, 2])
+        xs = xs.view(batch, K, 1) + reg[:, :, 0:1]#acá suma el offset a el centro del heatmap
+        ys = ys.view(batch, K, 1) + reg[:, :, 1:2]
+    else:
+        xs = xs.view(batch, K, 1) + 0.5
+        ys = ys.view(batch, K, 1) + 0.5
+    polygon_vertices = _tranpose_and_gather_feat(polygon_vertices, inds)
+
+    polygon_vertices = polygon_vertices.view(batch, K, 8)
+    clses = clses.view(batch, K, 1).float()
+    scores = scores.view(batch, K, 1)
+    # print(scores)
+    polygons = torch.cat([xs, ys, polygon_vertices], dim =2)
+    # bboxes = torch.cat([xs - wh[..., 0:1] / 2,
+    #                     ys - wh[..., 1:2] / 2,
+    #                     xs + wh[..., 0:1] / 2,
+    #                     ys + wh[..., 1:2] / 2], dim=2)
+    detections = torch.cat([polygons, scores, clses], dim=2)
+    return detections

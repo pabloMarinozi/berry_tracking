@@ -38,7 +38,7 @@ class BaseDetector(object):
     height, width = image.shape[0:2]
     new_height = int(height * scale)
     new_width  = int(width * scale)
-    if self.opt.fix_res:
+    if self.opt.fix_res: #vamos por acá
       inp_height, inp_width = self.opt.input_h, self.opt.input_w
       c = np.array([new_width / 2., new_height / 2.], dtype=np.float32)
       s = max(height, width) * 1.0
@@ -84,6 +84,7 @@ class BaseDetector(object):
     merge_time, tot_time = 0, 0
     debugger = Debugger(dataset=self.opt.dataset, ipynb=(self.opt.debug==3),
                         theme=self.opt.debugger_theme)
+    debugger.opt = self.opt
     start_time = time.time()
     pre_processed = False
     if isinstance(image_or_path_or_tensor, np.ndarray):
@@ -102,8 +103,8 @@ class BaseDetector(object):
     for scale in self.scales:
       scale_start_time = time.time()
       if not pre_processed:
-        images, meta = self.pre_process(image, scale, meta)
-      else:
+        images, meta = self.pre_process(image, scale, meta)#meta es None
+      else:#po acá no va
         # import pdb; pdb.set_trace()
         images = pre_processed_images['images'][scale][0]
         meta = pre_processed_images['meta'][scale]
@@ -136,9 +137,67 @@ class BaseDetector(object):
     merge_time += end_time - post_process_time
     tot_time += end_time - start_time
 
-    #if self.opt.debug >= 1:
-      #self.show_results(debugger, image, results)
+    if self.opt.debug >= 1:
+      self.show_results(debugger, image, image_or_path_or_tensor, results)
     
     return {'results': results, 'tot': tot_time, 'load': load_time,
             'pre': pre_time, 'net': net_time, 'dec': dec_time,
             'post': post_time, 'merge': merge_time}
+
+  def run_det_for_byte(self, image_or_path_or_tensor, meta=None):
+    load_time, pre_time, net_time, dec_time, post_time = 0, 0, 0, 0, 0
+    merge_time, tot_time = 0, 0
+    debugger = Debugger(dataset=self.opt.dataset, ipynb=(self.opt.debug == 3),
+                        theme=self.opt.debugger_theme)
+    start_time = time.time()
+    pre_processed = False
+    if isinstance(image_or_path_or_tensor, np.ndarray):
+      image = image_or_path_or_tensor
+    elif type(image_or_path_or_tensor) == type(''):
+      image = cv2.imread(image_or_path_or_tensor)
+    else:
+      image = image_or_path_or_tensor['image'][0].numpy()
+      pre_processed_images = image_or_path_or_tensor
+      pre_processed = True
+
+    loaded_time = time.time()
+    load_time += (loaded_time - start_time)
+
+    detections = []
+    for scale in self.scales:
+      scale_start_time = time.time()
+      if not pre_processed:
+        images, meta = self.pre_process(image, scale, meta)
+      else:
+        # import pdb; pdb.set_trace()
+        images = pre_processed_images['images'][scale][0]
+        meta = pre_processed_images['meta'][scale]
+        meta = {k: v.numpy()[0] for k, v in meta.items()}
+      images = images.to(self.opt.device)
+      torch.cuda.synchronize()
+      pre_process_time = time.time()
+      pre_time += pre_process_time - scale_start_time
+
+      output, dets, forward_time = self.process(images, return_time=True)
+
+      torch.cuda.synchronize()
+      net_time += forward_time - pre_process_time
+      decode_time = time.time()
+      dec_time += decode_time - forward_time
+
+
+
+      dets = self.post_process(dets, meta, scale)
+      torch.cuda.synchronize()
+      post_process_time = time.time()
+      post_time += post_process_time - decode_time
+
+      detections.append(dets)
+
+    results = self.merge_outputs(detections)
+    torch.cuda.synchronize()
+    end_time = time.time()
+    merge_time += end_time - post_process_time
+    tot_time += end_time - start_time
+
+    return results
