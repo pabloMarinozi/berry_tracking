@@ -5,3 +5,4 @@ imutils==0.5.3
 dlib==19.18.0
 opencv-python==4.2.0.32
 scipy==1.4.1
+pandas

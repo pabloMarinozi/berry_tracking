@@ -195,7 +195,12 @@ def track(opt):
 
         # use the centroid tracker to associate the (1) old object
         # centroids with (2) the newly computed object centroids
-        objects, radios = ct.update(rects)
+        try:
+            objects, radios = ct.update(rects)  
+        except ValueError:
+            totalFrames += 1
+            fps.update()
+            continue
 
         # loop over the tracked objects
         img_name = base_name + "_" + str(totalFrames) + ".png"
@@ -227,7 +232,7 @@ def track(opt):
             cv2.putText(rgb, text, (centroid[0], centroid[1]),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
             cv2.circle(RTLD_GLOBAL, (centroid[0], centroid[1]), 4, (255, 255, 255), -1)
-            cv2.circle(rgb, (centroid[0], centroid[1]), int(radio), (0, 255, 0), 3)
+            cv2.circle(rgb, (centroid[0], centroid[1]), int(radio), (0, 255, 0), 1)
             
 
                 

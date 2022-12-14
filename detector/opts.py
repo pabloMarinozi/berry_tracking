@@ -28,7 +28,7 @@ class opts(object):
     self.parser.add_argument('--confidence_threshold', type=float, default=0.4,
                              help='minimum confidence for a detection to be considered')
     self.parser.add_argument('--dataset', default='monuseg',
-                             help='coco | kitti | coco_hp | pascal | kidpath | monuseg')
+                             help='coco | kitti | coco_hp | pascal | kidpath | monuseg | polygons')
     self.parser.add_argument('--exp_id', default='default')
     self.parser.add_argument('--test', action='store_true')
     self.parser.add_argument('--ontestdata', action='store_true')
@@ -85,7 +85,7 @@ class opts(object):
                              choices=['white', 'black'])
     
     # model
-    self.parser.add_argument('--arch', default='dla_34', 
+    self.parser.add_argument('--arch', default='hourglass',
                              help='model architecture. Currently tested'
                                   'res_18 | res_101 | resdcn_18 | resdcn_101 |'
                                   'dlav0_34 | dla_34 | hourglass')
@@ -96,6 +96,8 @@ class opts(object):
                                   '64 for resnets and 256 for dla.')
     self.parser.add_argument('--down_ratio', type=int, default=4,
                              help='output stride. Currently only supports 4.')
+    self.parser.add_argument('--vertices_number', type=int, default=4,
+                             help='Currently only supports 4.')
 
     # input
     self.parser.add_argument('--input_res', type=int, default=-1, 
@@ -192,6 +194,8 @@ class opts(object):
                              help='loss weight for keypoint local offsets.')
     self.parser.add_argument('--wh_weight', type=float, default=0.1,
                              help='loss weight for bounding box size.')
+    self.parser.add_argument('--occ_weight', type=float, default=1,
+                             help='loss weight for occlusion_factor')
     # multi_pose
     self.parser.add_argument('--hp_weight', type=float, default=1,
                              help='loss weight for human pose offset.')
@@ -301,6 +305,7 @@ class opts(object):
 
     opt.root_dir = os.path.join(os.path.dirname(__file__), '..', '..')
     opt.data_dir = os.path.join(opt.root_dir, 'data')
+    # opt.data_dir = '/mnt/datos/datasets'
     opt.exp_dir = os.path.join(opt.root_dir, 'exp', opt.task)
     opt.save_dir = os.path.join(opt.exp_dir, opt.exp_id)
     opt.debug_dir = os.path.join(opt.save_dir, 'debug')
@@ -354,6 +359,7 @@ class opts(object):
       opt.heads = {'hm': opt.num_classes,
                    'cl': 1 if not opt.cat_spec_wh else 1 * opt.num_classes}
 
+<<<<<<< HEAD
       if opt.reg_offset:
         opt.heads.update({'reg': 2})
       #cdiou
@@ -369,6 +375,23 @@ class opts(object):
                    'cl': opt.vertices_number * 2 }#* opt.num_classes
       if opt.reg_offset:
         opt.heads.update({'reg': 2})
+=======
+      if opt.reg_offset:
+        opt.heads.update({'reg': 2})
+      #cdiou
+    elif opt.task == 'cdiou':
+      # assert opt.dataset in ['pascal', 'coco']
+      opt.heads = {'hm': opt.num_classes,
+                   'cl': 1 if not opt.cat_spec_wh else 1 * opt.num_classes,
+                   'reg': 2,
+                   'occ': 1}
+
+    elif opt.task == 'polygondet':
+      opt.heads = {'hm': opt.num_classes,
+                   'cl': opt.vertices_number * 2 }#* opt.num_classes
+      if opt.reg_offset:
+        opt.heads.update({'reg': 2})
+>>>>>>> 288a9177461afaa75da0392f59d3228ff8f237a0
 
     elif opt.task == 'multi_pose':
       # assert opt.dataset in ['coco_hp']
