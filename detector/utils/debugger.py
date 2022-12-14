@@ -7,7 +7,7 @@ import cv2
 import os
 import json
 from .ddd_utils import compute_box_3d, project_to_image, draw_box_3d
-
+from utils.image import to_polar_coords, to_cartesian_coords,to_absolut_ref
 class Debugger(object):
   def __init__(self, ipynb=False, theme='black',
                num_classes=-1, dataset=None, down_ratio=4):
@@ -72,6 +72,13 @@ class Debugger(object):
       self.focal_length = 721.5377
       self.W = 1242
       self.H = 375
+    elif num_classes == 1 or dataset == 'grapes':
+      self.names = grapes_class_name
+    elif num_classes == 1 or dataset == 'grapes_with_occ_reg':
+      self.names = grapes_wo_class_name
+    elif num_classes == 1 or dataset == 'polygons':
+      self.names = polygons_class_name
+
     # num_classes = len(self.names)
     self.down_ratio=down_ratio
     # for bird view
@@ -201,6 +208,7 @@ class Debugger(object):
 
   def add_coco_circle(self, circle, cat=0, conf=1, show_txt=False, img_id='default'):
     circle = np.array(circle, dtype=np.int32)
+    cat=0
     # cat = (int(cat) + 1) % 80
     cat = int(cat)
     # print('cat', cat, self.names[cat])
@@ -214,12 +222,62 @@ class Debugger(object):
     cat_size = cv2.getTextSize(txt, font, 0.5, 2)[0]
     # cv2.rectangle(
     #   self.imgs[img_id], (bbox[0], bbox[1]), (bbox[2], bbox[3]), c, 2)
-    cv2.circle(self.imgs[img_id], (circle[0], circle[1]), circle[2], c, 2)
+    cv2.circle(self.imgs[img_id], (circle[0], circle[1]), circle[2], c, 1)
 
+  def add_circle_and_occlusion(self, circle, occ, cat=0, conf=1, show_txt=False, img_id='default'):
+    circle = np.array(circle, dtype=np.int32)
+    cat=0
+    occ = round(occ, 2)
+
+    # cat = (int(cat) + 1) % 80
+    cat = int(cat)
+    # print('cat', cat, self.names[cat])
+    # c = self.colors[cat][0][0].tolist()
+    # if self.theme == 'white':
+    #   c = (255 - np.array(c)).tolist()
+    c = (0, 255, 0)
+    # c = (0, 255, 0)  # hardcode to green
+    txt = '{}{:.1f}'.format(self.names[cat], conf)
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    cat_size = cv2.getTextSize(txt, font, 0.5, 2)[0]
+    # cv2.rectangle(
+    #   self.imgs[img_id], (bbox[0], bbox[1]), (bbox[2], bbox[3]), c, 2)
+    cv2.circle(self.imgs[img_id], (circle[0], circle[1]), circle[2], c, 1)
+
+    org = (circle[0], circle[1])
+    fontScale = 0.3
+    color = (0, 255, 0)
+    thickness = 1
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    cv2.putText(self.imgs[img_id], str(occ), org, font,
+              fontScale, color, thickness, cv2.LINE_AA)
+  def add_coco_polygon(self, polygon, cat=0, conf=1, show_txt=False, img_id='default'):
+    polygon = np.array(polygon, dtype=np.int32)
+    cat = 0
+    center = (polygon[0], polygon[1])
+    polygon = polygon[2:10]
+    # cat = (int(cat) + 1) % 80
+    cat = int(cat)
+    c = (0, 255, 0)
+    txt = '{}{:.1f}'.format(self.names[cat], conf)
+    thickness = 1
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    cat_size = cv2.getTextSize(txt, font, 0.5, 2)[0]
+    # cv2.rectangle(
+    #   self.imgs[img_id], (bbox[0], bbox[1]), (bbox[2], bbox[3]), c, 2)
+    isClosed = True
+    polygon = to_cartesian_coords(polygon)
+    polygon = to_absolut_ref(polygon, center)
+    polygon = np.int32(np.rint(np.asarray([[polygon[i], polygon[i+1]] for i in range(0,len(polygon)-1, 2)])))
+    # cv2.imshow('',self.imgs[img_id])
+    # cv2.waitKey(0)
+    cv2.polylines(self.imgs[img_id], [polygon], isClosed, c, thickness)
+    # cv2.imshow('', self.imgs[img_id])
+    # cv2.waitKey(0)
     if show_txt:
       bbox =  np.array(np.zeros((4)), dtype=np.int32)
-      bbox[0] = circle[0] - circle[2]
-      bbox[1] = circle[1] - circle[2]
+      # bbox[0] = circle[0] - circle[2]
+      # bbox[1] = circle[1] - circle[2]
       cv2.rectangle(self.imgs[img_id],
                     (bbox[0], bbox[1] - cat_size[1] - 2),
                     (bbox[0] + cat_size[0], bbox[1] - 2), c, -1)
@@ -238,6 +296,10 @@ class Debugger(object):
                       (points[e[1], 0], points[e[1], 1]), self.ec[j], 2,
                       lineType=cv2.LINE_AA)
 
+
+
+
+
   def add_points(self, points, img_id='default'):
     num_classes = len(points)
     # assert num_classes == len(self.colors)
@@ -251,13 +313,15 @@ class Debugger(object):
                                        points[i][j][1] * self.down_ratio),
                    3, (int(c[0]), int(c[1]), int(c[2])), -1)
 
-  def show_all_imgs(self, pause=False, time=0):
+  def show_all_imgs(self,image_or_path_or_tensor, pause=False, time=0):
     if not self.ipynb:
       for i, v in self.imgs.items():
-        cv2.imshow('{}'.format(i), v)
-      if cv2.waitKey(0 if pause else 1) == 27:
-        import sys
-        sys.exit(0)
+        # cv2.imshow('{}'.format(i), v)
+        path, image_name = os.path.split(image_or_path_or_tensor)
+        cv2.imwrite(self.opt.inference_folder + image_name, v)
+      # if cv2.waitKey(0 if pause else 1) == 27:
+      #   import sys
+      #   sys.exit(0)
     else:
       self.ax = None
       nImgs = len(self.imgs)
@@ -561,6 +625,10 @@ nucls_class_name = [
     'mitotic_figure', 'vascular_endothelium', 'myoepithelium', 'neutrophil',
     'apoptotic_body', 'ductal_epithelium', 'eosinophil'
 ]
+
+grapes_class_name = ['grape']
+grapes_wo_class_name = ['grape']
+polygons_class_name = ['polygon']
 
 color_list = np.array(
         [

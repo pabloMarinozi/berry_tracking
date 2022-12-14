@@ -9,9 +9,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import copy
+
 import numpy as np
 import cv2
 import random
+import itertools
 
 def flip(img):
   return img[:, :, ::-1].copy()  
@@ -228,3 +231,63 @@ def color_aug(data_rng, image, eig_val, eig_vec):
     for f in functions:
         f(data_rng, image, gs, gs_mean, 0.4)
     lighting_(data_rng, image, 0.1, eig_val, eig_vec)
+
+def to_cartesian_coords(vertices):
+    """vertices in relative reference"""
+    vert_mod = vertices[::2]
+    vert_phase = vertices[1::2]
+    vertices = [[mod * np.cos(phase), mod * np.sin(phase)] for mod, phase in zip(vert_mod, vert_phase)]
+    return list(itertools.chain(*vertices))
+
+def to_polar_coords(vertices):
+    """vertices in relative reference"""
+    ver_x = vertices[::2]
+    ver_y = vertices[1::2]
+    mod = [np.linalg.norm([x, y]) for x, y in zip(ver_x, ver_y)]
+    phase = np.arctan2(ver_y, ver_x)
+    phase = [p if p >= 0 else (p + (2 * np.pi)) for p in phase]
+    vertices = [[x, ang] for x, ang in zip(mod, phase)]
+    return list(itertools.chain(*vertices))
+
+
+def draw_annotations(img, center, vertices, bb):
+    """Vertices in absolute references in cartesian coordinates"""
+
+    color_bb = (23, 220, 75)
+    color_polygon = (0, 0, 220)
+    thickness = 1
+    bb_1 = (int(round(bb[0])), int(round(bb[1])))
+    bb_2 =(int(round(bb[2])), int(round(bb[3])))
+    print(vertices)
+    vertices = [int(round(vertex)) for vertex in vertices]
+    center_tuple =(int(round(center[0])), int(round(center[1])))
+
+    print(f"vertices: {vertices}")
+    print(f"center: {center_tuple}")
+    img = cv2.rectangle(img, bb_1, bb_2, color_bb, thickness)
+    img = cv2.line(img, center_tuple, (vertices[0], vertices[1]), color_polygon, thickness)
+    img = cv2.line(img, center_tuple, (vertices[2], vertices[3]), color_polygon, thickness)
+    img = cv2.line(img, center_tuple, (vertices[4], vertices[5]), color_polygon, thickness)
+    img = cv2.line(img, center_tuple, (vertices[6], vertices[7]), color_polygon, thickness)
+
+    return img
+
+def to_absolut_ref(vertices, center):
+    """vertices in cartesian coordinates"""
+    ver_x = vertices[::2]
+    ver_y = vertices[1::2]
+    ver_x = [x + center[0] for x in ver_x]
+    ver_y = [y + center[1] for y in ver_y]
+    ver = [[x, y] for x, y in zip(ver_x, ver_y)]
+    ver = list(itertools.chain(*ver))
+    return ver
+
+def to_relative_ref(vertices, center):
+    """vertices in cartesian coordinates"""
+    ver_x = vertices[::2]
+    ver_y = vertices[1::2]
+    ver_x = [x - center[0] for x in ver_x]
+    ver_y = [y - center[1] for y in ver_y]
+    ver = [[x, y] for x, y in zip(ver_x, ver_y)]
+    ver = list(itertools.chain(*ver))
+    return ver

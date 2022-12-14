@@ -20,9 +20,18 @@ def _gather_feat(feat, ind, mask=None):
     return feat
 
 def _tranpose_and_gather_feat(feat, ind):
-    feat = feat.permute(0, 2, 3, 1).contiguous()
-    feat = feat.view(feat.size(0), -1, feat.size(3))
+    # ind son los índices de las 1000 detecciones con mejor score
+    # torch.Size([1, 2, 256, 144]) reg y torch.Size([1, 8, 256, 144]) vertices
+    feat = feat.permute(0, 2, 3, 1).contiguous() #torch tensor que reacomodan y pone de manera contugua en memoria
+    #  torch.Size([1, 256, 144, 2]) para reg y torch.Size([1, 256, 144, 8]) para polygon_vertices
+    #https://pytorch.org/docs/stable/generated/torch.permute.html
+    #https://pytorch.org/docs/stable/generated/torch.Tensor.contiguous.html
+    feat = feat.view(feat.size(0), -1, feat.size(3)) # Returns a new tensor with the same data as the self tensor
+    # but of a different shape.
+    # torch.Size([1, 36864, 2]) para reg y torch.Size([1, 36864, 8])
     feat = _gather_feat(feat, ind)
+    #torch.Size([1, 1000, 2]) para reg y torch.Size([1, 1000, 8]) para
+
     return feat
 
 def flip_tensor(x):

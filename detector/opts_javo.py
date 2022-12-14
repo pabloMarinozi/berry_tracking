@@ -9,26 +9,14 @@ import sys
 class opts(object):
   def __init__(self):
     self.parser = argparse.ArgumentParser()
-    #tracker arguments
-    self.parser.add_argument("-w", "--weights", help="path to Caffe pre-trained model")
-    self.parser.add_argument("-i", "--input", type=str,required=True, help="path to optional input video file")
-    self.parser.add_argument("-o", "--output", type=str, help="path to optional output video file")
-    self.parser.add_argument("-c", "--confidence", type=float, default=0.4,help="minimum probability to filter weak detections")
-    self.parser.add_argument("-s", "--skip-frames", type=int, default=5, help="# of skip frames between detections")
-    self.parser.add_argument("-y","--imgsz",type=int,default=1024, help="size of image of inference")
-    self.parser.add_argument("-k","--conf-thres",type=float,default=0.25, help="")
-    self.parser.add_argument("-l","--iou-thres",type=float, default=0.45, help="")
-    self.parser.add_argument("-p","--max-det",type=int,default=1000, help="maximum number of detections per frame")
-    self.parser.add_argument("-u","--is-gpu",type=str,required=True, help="if you want it to use CPU pass it 'cpu', otherwise pass it an empty string '' for GPU use.")
-    
-
-    #detector arguments
+    # basic experiment setting
     self.parser.add_argument('task', default='circledet',
-                             help='ctdet | ddd | multi_pose | exdet | circledet')
+                             help='ctdet | ddd | multi_pose | exdet | circledet | polygondet')
     self.parser.add_argument('--confidence_threshold', type=float, default=0.4,
                              help='minimum confidence for a detection to be considered')
+
     self.parser.add_argument('--dataset', default='monuseg',
-                             help='coco | kitti | coco_hp | pascal | kidpath | monuseg')
+                             help='coco | kitti | coco_hp | pascal | kidpath | monuseg | polygons')
     self.parser.add_argument('--exp_id', default='default')
     self.parser.add_argument('--test', action='store_true')
     self.parser.add_argument('--ontestdata', action='store_true')
@@ -85,7 +73,7 @@ class opts(object):
                              choices=['white', 'black'])
     
     # model
-    self.parser.add_argument('--arch', default='dla_34', 
+    self.parser.add_argument('--arch', default='hourglass',
                              help='model architecture. Currently tested'
                                   'res_18 | res_101 | resdcn_18 | resdcn_101 |'
                                   'dlav0_34 | dla_34 | hourglass')
@@ -96,6 +84,8 @@ class opts(object):
                                   '64 for resnets and 256 for dla.')
     self.parser.add_argument('--down_ratio', type=int, default=4,
                              help='output stride. Currently only supports 4.')
+    self.parser.add_argument('--vertices_number', type=int, default=4,
+                             help='Currently only supports 4.')
 
     # input
     self.parser.add_argument('--input_res', type=int, default=-1, 
@@ -192,6 +182,8 @@ class opts(object):
                              help='loss weight for keypoint local offsets.')
     self.parser.add_argument('--wh_weight', type=float, default=0.1,
                              help='loss weight for bounding box size.')
+    self.parser.add_argument('--occ_weight', type=float, default=1,
+                             help='loss weight for occlusion_factor')
     # multi_pose
     self.parser.add_argument('--hp_weight', type=float, default=1,
                              help='loss weight for human pose offset.')
@@ -301,6 +293,7 @@ class opts(object):
 
     opt.root_dir = os.path.join(os.path.dirname(__file__), '..', '..')
     opt.data_dir = os.path.join(opt.root_dir, 'data')
+    # opt.data_dir = '/mnt/datos/datasets'
     opt.exp_dir = os.path.join(opt.root_dir, 'exp', opt.task)
     opt.save_dir = os.path.join(opt.exp_dir, opt.exp_id)
     opt.debug_dir = os.path.join(opt.save_dir, 'debug')

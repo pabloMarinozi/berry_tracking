@@ -14,7 +14,7 @@ numpy
 olefile==0.46
 opencv-python==4.5.2.54
 openslide-python==1.1.2
-Pillow
+Pillow==6.2.0
 progress==1.5
 pycocotools==2.0
 pycparser

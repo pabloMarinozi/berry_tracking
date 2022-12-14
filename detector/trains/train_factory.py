@@ -7,11 +7,15 @@ from .circledet import CircleTrainer
 from .ddd import DddTrainer
 from .exdet import ExdetTrainer
 from .multi_pose import MultiPoseTrainer
+from .polygondet import PolygonTrainer
+from  .cdiou import CircleTrainerWithOcc
 
 train_factory = {
   'exdet': ExdetTrainer, 
   'ddd': DddTrainer,
   'ctdet': CtdetTrainer,
   'circledet': CircleTrainer,
-  'multi_pose': MultiPoseTrainer, 
+  'multi_pose': MultiPoseTrainer,
+  'polygondet': PolygonTrainer,
+   'cdiou': CircleTrainerWithOcc
 }

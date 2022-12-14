@@ -7,6 +7,8 @@ from .sample.exdet import EXDetDataset
 from .sample.ctdet import CTDetDataset
 from .sample.circledet import CirCleDataset
 from .sample.multi_pose import MultiPoseDataset
+from .sample.polydet import PolygonDataset
+from .sample.circledet_with_occ import CirCleDatasetWithOcclusion
 
 from .dataset.coco import COCO
 from .dataset.pascal import PascalVOC
@@ -19,6 +21,11 @@ from .dataset.kidney_first_batch_081617_ADE import KidPath_FirstBatch_081617_ADE
 from .dataset.kidney_first_batch_R24 import KidPath_FirstBatch_R24
 from .dataset.monuseg import MoNuSeg
 from .dataset.nucls import NuCLS
+from .dataset.grapes import Grapes
+from .dataset.grapes_with_occ_reg import GrapesWithOcc
+from .dataset.polygons import Polygons
+from .dataset.polygons2c import Polygons2c
+
 
 dataset_factory = {
   'coco': COCO,
@@ -31,7 +38,11 @@ dataset_factory = {
   'kidney_first_batch_081617_ADE': KidPath_FirstBatch_081617_ADE,
   'kidpath_first_batch_R24': KidPath_FirstBatch_R24,
   'monuseg': MoNuSeg,
-  'nucls' : NuCLS
+  'nucls' : NuCLS,
+  'grapes' : Grapes,
+  'grapes_with_occ': GrapesWithOcc,
+  'polygons': Polygons,
+  'polygons2c': Polygons2c,
 }
 
 _sample_factory = {
@@ -40,6 +51,9 @@ _sample_factory = {
   'ddd': DddDataset,
   'multi_pose': MultiPoseDataset,
   'circledet': CirCleDataset,
+  'cdiou': CirCleDatasetWithOcclusion,
+  'polygondet': PolygonDataset,
+  'polygondet2c': PolygonDataset
 }
 
 

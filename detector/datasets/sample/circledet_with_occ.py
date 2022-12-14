@@ -15,7 +15,7 @@ from utils.image import draw_dense_reg
 import math
 
 
-class CirCleDataset(data.Dataset):
+class CirCleDatasetWithOcclusion(data.Dataset):
     def _coco_box_to_bbox(self, box):
         bbox = np.array([box[0], box[1], box[0] + box[2], box[1] + box[3]],
                         dtype=np.float32)
@@ -117,6 +117,7 @@ class CirCleDataset(data.Dataset):
 
         # Add for circle
         cl = np.zeros((self.max_objs, 1), dtype=np.float32)
+        occ = np.zeros((self.max_objs, 1), dtype=np.float32)
         dense_cl = np.zeros((1, output_h, output_w), dtype=np.float32)
         reg_cl = np.zeros((self.max_objs, 2), dtype=np.float32)
         ind_cl = np.zeros((self.max_objs), dtype=np.int64)
@@ -139,7 +140,7 @@ class CirCleDataset(data.Dataset):
             # print(int(self.cat_ids[int(ann['category_id'])]))
 
             cls_id = int(self.cat_ids[int(ann['category_id'])])
-
+            occlusion_factor = ann['occlusion_factor']
             center_point = ann['circle_center']
             center_radius = ann['circle_radius']
 
@@ -153,9 +154,7 @@ class CirCleDataset(data.Dataset):
             bbox[2:] = affine_transform(bbox[2:], trans_output)
             center_point_aff = affine_transform(center_point, trans_output)
             center_radius_aff = center_radius * trans_output[0][0]
-            bbox[[0, 2]] = np.clip(bbox[[0, 2]], 0, output_w - 1) # TODO ver que hacer con las etiquetas cuando queda un
-                                                                  # pedazo fuera de imagen
-                                                                  # con la bounding box usan np.clip
+            bbox[[0, 2]] = np.clip(bbox[[0, 2]], 0, output_w - 1)
             bbox[[1, 3]] = np.clip(bbox[[1, 3]], 0, output_h - 1)
             h, w = bbox[3] - bbox[1], bbox[2] - bbox[0]
             if h > 0 and w > 0 and center_point_aff[0]>0 \
@@ -191,6 +190,7 @@ class CirCleDataset(data.Dataset):
                 reg_mask[k] = 1
                 cr = center_radius_aff
                 cl[k] = 1. * cr
+                occ[k] = 1. * occlusion_factor
                 cat_spec_cl[k, cls_id * 1: cls_id * 1 + 1] = cl[k]
                 cat_spec_clmask[k, cls_id * 1: cls_id * 1 + 1] = 1
                 if self.opt.filter_boarder:
@@ -208,7 +208,7 @@ class CirCleDataset(data.Dataset):
                 # print('ind_cl')
                 # print(ind_cl[0:10])
 
-        ret = {'input': inp, 'hm': hm, 'reg_mask': reg_mask, 'ind': ind_cl, 'cl': cl}
+        ret = {'input': inp, 'hm': hm, 'reg_mask': reg_mask, 'ind': ind_cl, 'cl': cl, 'occ': occ}
         if self.opt.dense_wh:
             hm_a = hm.max(axis=0, keepdims=True)
             dense_wh_mask = np.concatenate([hm_a, hm_a], axis=0)
