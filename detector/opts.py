@@ -358,8 +358,6 @@ class opts(object):
       # assert opt.dataset in ['pascal', 'coco']
       opt.heads = {'hm': opt.num_classes,
                    'cl': 1 if not opt.cat_spec_wh else 1 * opt.num_classes}
-
-<<<<<<< HEAD
       if opt.reg_offset:
         opt.heads.update({'reg': 2})
       #cdiou
@@ -375,23 +373,6 @@ class opts(object):
                    'cl': opt.vertices_number * 2 }#* opt.num_classes
       if opt.reg_offset:
         opt.heads.update({'reg': 2})
-=======
-      if opt.reg_offset:
-        opt.heads.update({'reg': 2})
-      #cdiou
-    elif opt.task == 'cdiou':
-      # assert opt.dataset in ['pascal', 'coco']
-      opt.heads = {'hm': opt.num_classes,
-                   'cl': 1 if not opt.cat_spec_wh else 1 * opt.num_classes,
-                   'reg': 2,
-                   'occ': 1}
-
-    elif opt.task == 'polygondet':
-      opt.heads = {'hm': opt.num_classes,
-                   'cl': opt.vertices_number * 2 }#* opt.num_classes
-      if opt.reg_offset:
-        opt.heads.update({'reg': 2})
->>>>>>> 288a9177461afaa75da0392f59d3228ff8f237a0
 
     elif opt.task == 'multi_pose':
       # assert opt.dataset in ['coco_hp']
