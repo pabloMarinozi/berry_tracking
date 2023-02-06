@@ -112,4 +112,4 @@ class CircledetIOUDetector(BaseDetector):
         if circle[4] > self.opt.vis_thresh:
           debugger.add_circle_and_occlusion(circle[:3], circle[3], circle[-1],
                                    circle[4], img_id=os.path.basename(name.split('.')[0]))
-    debugger.show_all_imgs(image_or_path_or_tensor, pause=self.pause)
+    # debugger.show_all_imgs(image_or_path_or_tensor, pause=self.pause)
