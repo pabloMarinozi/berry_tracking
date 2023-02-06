@@ -67,7 +67,9 @@ def track(opt):
 
 
     print("[INFO] Starting the video..")
-    base_name = opt.input.replace("/content/videos","").replace(".mp4","")
+    base_path, base_name = os.path.split(opt.input)
+    base_name= os.path.splitext(base_name)[0]
+    opt.input.replace(base_path+"/","").replace(".mp4","")
     vs = cv2.VideoCapture(opt.input)
 
     # initialize the video writer (we'll instantiate later if need be)
@@ -81,7 +83,7 @@ def track(opt):
     # instantiate our centroid tracker, then initialize a list to store
     # each of our dlib correlation trackers, followed by a dictionary to
     # map each unique object ID to a TrackableObject
-    ct = CentroidTracker(maxDisappeared=2, maxDistance=50)
+    ct = CentroidTracker(maxDisappeared=0, maxDistance=60)
     trackers = []
     trackableObjects = {}
 
@@ -107,11 +109,13 @@ def track(opt):
     detector = Detector(opt)
 
     # loop over frames from the video stream
-    while totalFrames<100:
+    while totalFrames<800:
         # grab the next frame and handle if we are reading from either
         # VideoCapture or VideoStream
         frame = vs.read()
         flag, rgb = frame
+        if flag == False:
+            break
         
 
         if not flag:
@@ -138,7 +142,7 @@ def track(opt):
 
         # check to see if we should run a more computationally expensive
         # object detection method to aid our tracker
-        if totalFrames % opt.skip_frames == 0:
+        if totalFrames % opt.skip_frames == 0: # and totalFrames>0
             # set the status and initialize our new set of object trackers
             status = "Detecting"
             trackers = []
@@ -148,7 +152,7 @@ def track(opt):
 
 
             # loop over the detections
-            for pred in reversed(preds):
+            for pred in preds:
               center_x = pred[0]
               center_y = pred[1]
               radio = pred[2]
@@ -156,7 +160,7 @@ def track(opt):
               classl = pred[4]
               startX, startY = center_x-radio,center_y-radio
               endX, endY = center_x+radio,center_y+radio
-              if conf > confidence:
+              if center_x > 0 and center_y > 0: #and conf > 0.4
                 # construct a dlib rectangle object from the bounding
                 # box coordinates and then start the dlib correlation
                 # tracker
@@ -205,7 +209,7 @@ def track(opt):
         # loop over the tracked objects
         img_name = base_name + "_" + str(totalFrames) + ".png"
         if status == "Detecting":
-            output_name = opt.output + img_name
+            output_name = opt.output +'/' + img_name
             print(output_name)
             cv2.imwrite(output_name,rgb)
         for (objectID, centroid) in objects.items():
@@ -241,8 +245,8 @@ def track(opt):
             writer.write(rgb)
         
         if status == "Detecting":
-            img_name_det = base_name + "_" + str(totalFrames) + "_det.png"
-            output_name = opt.output + img_name_det
+            img_name_det = base_name  + "_" + str(totalFrames) + "_det.png"
+            output_name = opt.output +'/' + img_name_det
             print(output_name)
             cv2.imwrite(output_name,rgb)
 
