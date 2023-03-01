@@ -16,11 +16,11 @@ opencv-python==4.5.2.54
 openslide-python==1.1.2
 Pillow==6.2.0
 progress==1.5
-pycocotools==2.0
+pycocotools==2.0.6
 pycparser
 pyparsing==2.4.7
 pyquaternion==0.9.9
-python-dateutil==2.8.1
+python-dateutil==2.8.2
 scipy==1.5.4
 six
 xmltodict==0.12.0
