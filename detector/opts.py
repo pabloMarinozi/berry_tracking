@@ -14,16 +14,22 @@ class opts(object):
     self.parser.add_argument("-i", "--input", type=str,required=True, help="path to optional input video file")
     self.parser.add_argument("-o", "--output", type=str, help="path to optional output video file")
     self.parser.add_argument("-c", "--confidence", type=float, default=0.4,help="minimum probability to filter weak detections")
-    self.parser.add_argument("-s", "--skip-frames", type=int, default=5, help="# of skip frames between detections")
+    self.parser.add_argument("-s", "--skip-frames", type=int, default=1, help="# of skip frames between detections")
     self.parser.add_argument("-y","--imgsz",type=int,default=1024, help="size of image of inference")
     self.parser.add_argument("-k","--conf-thres",type=float,default=0.25, help="")
     self.parser.add_argument("-l","--iou-thres",type=float, default=0.45, help="")
     self.parser.add_argument("-p","--max-det",type=int,default=1000, help="maximum number of detections per frame")
     self.parser.add_argument("-u","--is-gpu",type=str,required=True, help="if you want it to use CPU pass it 'cpu', otherwise pass it an empty string '' for GPU use.")
-    
+    # tracker from json file arguments
+    self.parser.add_argument('-djp','--detection_json_path', type = str,
+                             help='Path to detections file. Must be a json file')
+    self.parser.add_argument('-ssimg', '--save_source_images', default=True, help='each frame will be saved')
+    self.parser.add_argument('-stimg', '--save_tracked_images', default=True, help='each labeled frame will be saved')
+    self.parser.add_argument('-sf', '--star_frame', default=0, type=int, help='frame number to start to track')
+    self.parser.add_argument('-ef', '--end_frame', default=5000, type=int, help='frame number to stop to track')
 
     #detector arguments
-    self.parser.add_argument('task', default='circledet',
+    self.parser.add_argument('task', default='cdiou',
                              help='ctdet | ddd | multi_pose | exdet | circledet')
     self.parser.add_argument('--confidence_threshold', type=float, default=0.4,
                              help='minimum confidence for a detection to be considered')
@@ -258,6 +264,9 @@ class opts(object):
                              help='use ground truth human joint local offset.')
     self.parser.add_argument('--eval_oracle_dep', action='store_true', 
                              help='use ground truth depth.')
+
+    # tracker arguments
+
 
   def parse(self, args=''):
     if args == '':
