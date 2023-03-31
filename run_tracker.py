@@ -1,11 +1,11 @@
 import os
 base_dir = "/mnt/datos/onedrive/Doctorado/3df/berry_tracking/"
-output_path = "/mnt/datos/capturas/videos_pablo_2023_02_02/output/"
-input_path = "/mnt/datos/capturas/videos_pablo_2023_02_02/"
+output_path = "/mnt/datos/capturas/videos_pablo_2023_02_08/output/"
+input_path = "/mnt/datos/capturas/videos_pablo_2023_02_08/"
 model_path = "/mnt/datos/models/2022.11.30_grapes_mix_iou.pth"
 
 # Opening file
-file1 = open('/mnt/datos/capturas/videos_pablo_2023_02_02/input.txt', 'r')
+file1 = open('/mnt/datos/capturas/videos_pablo_2023_02_08/input.txt', 'r')
 count = 0
 
 # Using for loop
